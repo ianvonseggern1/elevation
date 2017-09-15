@@ -1,6 +1,7 @@
 from __future__ import division
 from collections import namedtuple
 from geopy.distance import vincenty, great_circle
+import os
 import math
 import urllib
 import zipfile
@@ -422,6 +423,49 @@ class RenderView(object):
     # horizontally flip the view
     return (np.flip(view, 1), map, np.flip(view_locations, 1))
 
+  def pathForEye(self):
+    return 'view_data/N' + str(self.eye_location.lat) + 'W' + str(self.eye_location.long) + '-height' + str(self.eye_location.z)
+
+  def save360View(self, width_resolution = 10000, height_resolution = 1000):
+    path = self.pathForEye()
+    try:
+      os.makedirs(path)
+    except:
+      print 'Failed to create directory for eye location, perhaps it already exists'
+      return None
+
+    (view, map, view_locations) = self.getViewAndMap(0.0, width_angle = 360.0, 
+                                                     width_resolution = width_resolution, 
+                                                     height_resolution = height_resolution, 
+                                                     print_progress = True)
+    file = open(path + '/view', 'wb')
+    np.save(file, view)
+    file.close()
+
+    file = open(path + '/map', 'wb')
+    np.save(file, map)
+    file.close()
+
+    file = open(path + '/view_locations', 'wb')
+    np.save(file, view_locations)
+    file.close()
+
+    return (view, map, view_locations)
+
+  def loadView(self):
+    path = self.pathForEye()
+    file = open(path + '/view')
+    view = np.load(file)
+    file.close()
+    file = open(path + '/map')
+    map = np.load(file)
+    file.close()
+    file = open(path + '/view_locations')
+    view_locations = np.load(file)
+    file.close()
+    return (view, map, view_locations)
+
+
 # Sample with mt diablo
 if __name__ == "__main__":
 
@@ -433,12 +477,12 @@ if __name__ == "__main__":
   # Render the view and map data in numpy arrays
   renderer = RenderView(np.copy(elevations), eye_location, 
                         min_long, max_long, min_lat, max_lat,
-  #                      approximate_earth_curvature = False # for debugging
+                        approximate_earth_curvature = False # for debugging
                         )
-  (view, map, view_location) = renderer.getViewAndMap(
-                                       90.0, 
-  #                                     width_resolution = 16, height_resolution = 8, # for debugging
-                                       print_progress = True)
+#  (view, map, view_location) = renderer.save360View(
+                                            #        width_resolution = 36, height_resolution = 10 # debugging
+#                                                   )
+  (view, map, view_location) = renderer.loadView()
   (eye_x_index, eye_y_index) = renderer.elevation_tree.indiciesForLocation(eye_location.long, eye_location.lat)
 
   # Plot everything
