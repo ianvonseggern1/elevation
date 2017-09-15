@@ -473,16 +473,21 @@ if __name__ == "__main__":
   elevations = retriveSrtm(min_long, max_long, min_lat, max_lat)
   #eye_location = Location(122.83, 37.67, 900.0) # A location a bit south of Mt Diablo
   eye_location = Location(122.9142, 37.8817, 951) # The peak of Mt Diablo
+  mode = 'load' # 'load', 'save', 'save-debugging'
   
   # Render the view and map data in numpy arrays
   renderer = RenderView(np.copy(elevations), eye_location, 
                         min_long, max_long, min_lat, max_lat,
-                        approximate_earth_curvature = False # for debugging
+                        approximate_earth_curvature = mode == 'save' # don't do this for debugging or loading
                         )
-#  (view, map, view_location) = renderer.save360View(
-                                            #        width_resolution = 36, height_resolution = 10 # debugging
-#                                                   )
-  (view, map, view_location) = renderer.loadView()
+
+  if mode == 'save':
+    (view, map, view_location) = renderer.save360View()
+  elif mode == 'save-debugging':
+    (view, map, view_location) = renderer.save360View(width_resolution = 36, height_resolution = 10)
+  elif mode == 'load':
+    (view, map, view_location) = renderer.loadView()
+
   (eye_x_index, eye_y_index) = renderer.elevation_tree.indiciesForLocation(eye_location.long, eye_location.lat)
 
   # Plot everything
