@@ -492,35 +492,40 @@ if __name__ == "__main__":
 
   # Plot everything
   plt.ion()
-  figure = plt.figure()
+  figure = plt.figure(1, figsize = (12, 4))
 
   ## Show elevation heatmap
-  heatmap_subplot = figure.add_subplot(2, 2, 1)
+  heatmap_subplot = figure.add_subplot(1, 3, 1)
   plt.imshow(elevations, cmap = cm.spectral, alpha = 1.0)
+  heatmap_subplot.set_title('Elevation')
   plt.grid(False)
-  plt.colorbar(ax = heatmap_subplot)
   heatmap_subplot.scatter(eye_x_index, eye_y_index, c = 'w')
   
   ## Show shaded relief map
-  relief_subplot = figure.add_subplot(2, 2, 2)
+  relief_subplot = figure.add_subplot(1, 3, 2)
   shaded = shadedReliefMap(elevations)
+  relief_subplot.set_title('Shaded Relief Map')
   plt.imshow(shaded, cmap = 'Greys')
   plt.grid(False)
   relief_subplot.scatter(eye_x_index, eye_y_index)
 
+  ## Show map
+  map_subplot = figure.add_subplot(1, 3, 3)
+  plt.imshow(map, cmap = cm.spectral, alpha = 1.0)
+  map_subplot.set_title('View')
+  plt.grid(False)
+  map_subplot.scatter(eye_x_index, eye_y_index, c = 'w')
+
   ## Show view
-  view_subplot = figure.add_subplot(2, 2, 3)
+  figure = plt.figure(2, figsize = (12, 4))
+  plt.subplots_adjust(left = 0.04, right = 1.0)
+  view_subplot = figure.add_subplot(1, 1, 1)
   plt.imshow(view, cmap = cm.spectral, alpha = 1.0, origin = 'lower')
-  view_subplot.set_title('View')
+  plt.colorbar()
   plt.grid(False)
 
-  ## Show map
-  map_subplot = figure.add_subplot(2, 2, 4)
-  plt.imshow(map, cmap = cm.spectral, alpha = 1.0)
-  map_subplot.set_title('Map')
-  plt.grid(False)
-  plt.colorbar()
-  map_subplot.scatter(eye_x_index, eye_y_index, c = 'w')
+  # nonlocal hack - https://stackoverflow.com/questions/2609518/python-nested-function-scopes
+  scatterplot_colors = [['b', 'g', 'r', 'c', 'm', 'y']]
   
   def onclick(event):
     try:
@@ -532,8 +537,15 @@ if __name__ == "__main__":
       return
     
     print(location)
-    relief_subplot.scatter(click_x_index, click_y_index)
-    heatmap_subplot.scatter(click_x_index, click_y_index)
+    color = scatterplot_colors[0][0]
+    relief_subplot.scatter(click_x_index, click_y_index, c = color)
+    heatmap_subplot.scatter(click_x_index, click_y_index, c = color)
+    map_subplot.scatter(click_x_index, click_y_index, c = color)
+    view_subplot.scatter(column_index, row_index, c = color)
+
+    # Rotate colors
+    scatterplot_colors[0] = scatterplot_colors[0][1:]
+    scatterplot_colors[0].append(color)
     plt.show(block = True)
 
   figure.canvas.mpl_connect('button_release_event', onclick)
