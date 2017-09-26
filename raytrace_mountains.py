@@ -7,9 +7,6 @@ import urllib
 import zipfile
 import struct
 import numpy as np
-import matplotlib.cm as cm
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
 
 #from cartopy.io.img_tiles import GoogleTiles # todo add a google map image, currently crashing
 
@@ -33,7 +30,7 @@ import matplotlib.patches as patches
 # order of arguments to functions, sometimes its lat, long, sometimes long, lat depending on context. Anytime x
 # is inappropriately used to refer to location its long and y is lat. When indicies are discussed however, due
 # to the way the elevation data is loaded (Here I probably could have just rotated the array, again apologies)
-# x increases as you go East and y increases as you go South. The arrays are indexed 
+# x increases as you go East and y increases as you go South. The arrays are indexed
 # [row][column] -> [y_index][x_index] yet another potential source of confusion.
 #
 # Issues/todos: As of now this assumes a flat earth (http://rol.st/2xI43qR), but subtracts a certain amount from
@@ -73,7 +70,7 @@ def retriveSrtm(min_long, max_long, min_lat, max_lat):
   (rows, columns) = data.shape
   start_col_index = columns * (math.ceil(max_long) - max_long) / data_span_longitude
   end_col_index = columns - columns * (min_long - int(min_long)) / data_span_longitude
-  start_row_index = rows * (math.ceil(max_lat) - max_lat) / data_span_latitude  
+  start_row_index = rows * (math.ceil(max_lat) - max_lat) / data_span_latitude
   end_row_index = rows - rows * (min_lat - int(min_lat)) / data_span_latitude
   return data[int(start_row_index):int(end_row_index), int(start_col_index):int(end_col_index)]
 
@@ -100,11 +97,11 @@ def shadedReliefMap(elevations):
   slope = np.pi/2. - np.arctan(np.sqrt(x*x + y*y))
   # -x here because of pixel orders in the SRTM tile
   aspect = np.arctan2(-x, y)
- 
+
   altitude = np.pi / 4.
   azimuth = np.pi / 2.
   return (np.sin(altitude) * np.sin(slope) +
-          (np.cos(altitude) * np.cos(slope) * 
+          (np.cos(altitude) * np.cos(slope) *
            np.cos((azimuth - np.pi / 2.0) - aspect)))
 
 
@@ -125,10 +122,10 @@ def kilometerLongitudeRatio(lat, long):
 # to construct a bounding box tree to speed up processing. Note this optimization is currently not
 # used or needed in the below raytrace function.
 class Elevations(object):
-  
+
   def __init__(self,
-               elevations, 
-               min_long, max_long, min_lat, max_lat, 
+               elevations,
+               min_long, max_long, min_lat, max_lat,
                eye_location_to_approximate_curvature_of_earth = None,
                construct_bounding_volume_heirachy = False):
     self.min_long = min_long
@@ -208,7 +205,7 @@ class Elevations(object):
     y_index = box.y_index - direction[1]
 
     layer_shape = self.tree[box.layer_index].shape
-    if (x_index < 0 or x_index >= layer_shape[1] or 
+    if (x_index < 0 or x_index >= layer_shape[1] or
         y_index < 0 or y_index >= layer_shape[0]):
       return None
 
@@ -264,12 +261,12 @@ class Raytrace(object):
     else:
       t_at_x_min = (box.min_long - self.ray_start.long) / self.ray_delta.long
       t_at_x_max = (box.max_long - self.ray_start.long) / self.ray_delta.long
-       
+
     min_t_for_valid_x = max(min(t_at_x_min, t_at_x_max), 0)
     max_t_for_valid_x = max(t_at_x_min, t_at_x_max)
     if (max_t_for_valid_x < 0):
       return False
-    
+
     if self.ray_delta.lat == 0.0:
       if self.ray_start.lat >= box.min_lat and self.ray_start.lat <= box.max_lat:
         t_at_y_min = 0
@@ -277,7 +274,7 @@ class Raytrace(object):
       else:
         t_at_y_min = float('inf')
         t_at_y_max = float('inf')
-    else: 
+    else:
       t_at_y_min = (box.min_lat - self.ray_start.lat) / self.ray_delta.lat
       t_at_y_max = (box.max_lat - self.ray_start.lat) / self.ray_delta.lat
 
@@ -285,7 +282,7 @@ class Raytrace(object):
     max_t_for_valid_y = max(t_at_y_min, t_at_y_max)
     if (max_t_for_valid_y < 0):
       return False
-   
+
     # check if ray passes through box by checking if there is overlap in
     # the range of t's for which the ray is in the correct x and correct y
     if (min_t_for_valid_y > max_t_for_valid_x or max_t_for_valid_y < min_t_for_valid_x):
@@ -331,7 +328,7 @@ class Raytrace(object):
     else:
       box = self.terrain.boxForLocation(self.ray_start.long, self.ray_start.lat)
 
-    while (box is not None and 
+    while (box is not None and
            not (self.intersect(box) and distanceToBox(self.ray_start, box) > self.MIN_DISTANCE)):
       box = self.terrain.siblingBoxInDirection(box, self.directionOfNextSiblingBoxAlongRay(box))
 
@@ -341,9 +338,9 @@ class Raytrace(object):
 class RenderView(object):
   MAX_DISTANCE = 100.0 # Since even on a super clear day its nearly impossible to see past 100 km
 
-  def __init__(self, 
-               elevations, eye_location, 
-               min_long, max_long, min_lat, max_lat, 
+  def __init__(self,
+               elevations, eye_location,
+               min_long, max_long, min_lat, max_lat,
                approximate_earth_curvature = True):
     self.eye_location = eye_location
     eye_location_arg = eye_location if approximate_earth_curvature else None
@@ -362,12 +359,12 @@ class RenderView(object):
   #
   # The third, the view_locations, are the corresponding locations for each of the pixels in the view
   # they are stored as (average_longitude, average_latitude, height in meters)
-  def getViewAndMap(self, 
+  def getViewAndMap(self,
                     horizontal_eye_angle, # measured as degrees clockwise from due north
                     verticle_eye_angle = 0.0,
-                    width_angle = 90.0, 
-                    height_angle = 12.0, 
-                    width_resolution = 2000, 
+                    width_angle = 90.0,
+                    height_angle = 12.0,
+                    width_resolution = 2000,
                     height_resolution = 1000,
                     print_progress = False):
 
@@ -385,7 +382,7 @@ class RenderView(object):
     for column_index in range(width_resolution):
       if print_progress and column_index % progress_increment == 0:
         print str(100.0 * column_index / width_resolution) + "%\n"
-        
+
       horizontal_angle = horizontal_eye_angle - width_angle / 2.0 + column_index * horizontal_angle_delta
       x_delta = math.sin(horizontal_angle * math.pi / 180)
       y_delta = math.cos(horizontal_angle * math.pi / 180)
@@ -404,7 +401,7 @@ class RenderView(object):
         if box is None:
           break
 
-        distance_km = distanceToBox(eye_location, box)
+        distance_km = distanceToBox(self.eye_location, box)
         if distance_km > self.MAX_DISTANCE:
           break
 
@@ -434,9 +431,9 @@ class RenderView(object):
       print 'Failed to create directory for eye location, perhaps it already exists'
       return None
 
-    (view, map, view_locations) = self.getViewAndMap(0.0, width_angle = 360.0, 
-                                                     width_resolution = width_resolution, 
-                                                     height_resolution = height_resolution, 
+    (view, map, view_locations) = self.getViewAndMap(0.0, width_angle = 360.0,
+                                                     width_resolution = width_resolution,
+                                                     height_resolution = height_resolution,
                                                      print_progress = True)
     file = open(path + '/view', 'wb')
     np.save(file, view)
@@ -464,90 +461,3 @@ class RenderView(object):
     view_locations = np.load(file)
     file.close()
     return (view, map, view_locations)
-
-
-# Sample with mt diablo
-if __name__ == "__main__":
-
-  (min_long, max_long, min_lat, max_lat) = (122.0, 124.0, 37.0, 39.0)
-  elevations = retriveSrtm(min_long, max_long, min_lat, max_lat)
-  #eye_location = Location(122.83, 37.67, 900.0) # A location a bit south of Mt Diablo
-  eye_location = Location(122.9142, 37.8817, 951) # The peak of Mt Diablo
-  mode = 'load' # 'load', 'save', 'save-debugging'
-  
-  # Render the view and map data in numpy arrays
-  renderer = RenderView(np.copy(elevations), eye_location, 
-                        min_long, max_long, min_lat, max_lat,
-                        approximate_earth_curvature = mode == 'save' # don't do this for debugging or loading
-                        )
-
-  if mode == 'save':
-    (view, map, view_location) = renderer.save360View()
-  elif mode == 'save-debugging':
-    (view, map, view_location) = renderer.save360View(width_resolution = 36, height_resolution = 10)
-  elif mode == 'load':
-    (view, map, view_location) = renderer.loadView()
-
-  (eye_x_index, eye_y_index) = renderer.elevation_tree.indiciesForLocation(eye_location.long, eye_location.lat)
-
-  # Plot everything
-  plt.ion()
-  figure = plt.figure(1, figsize = (12, 4))
-
-  ## Show elevation heatmap
-  heatmap_subplot = figure.add_subplot(1, 3, 1)
-  plt.imshow(elevations, cmap = cm.spectral, alpha = 1.0)
-  heatmap_subplot.set_title('Elevation')
-  plt.grid(False)
-  heatmap_subplot.scatter(eye_x_index, eye_y_index, c = 'w')
-  
-  ## Show shaded relief map
-  relief_subplot = figure.add_subplot(1, 3, 2)
-  shaded = shadedReliefMap(elevations)
-  relief_subplot.set_title('Shaded Relief Map')
-  plt.imshow(shaded, cmap = 'Greys')
-  plt.grid(False)
-  relief_subplot.scatter(eye_x_index, eye_y_index)
-
-  ## Show map
-  map_subplot = figure.add_subplot(1, 3, 3)
-  plt.imshow(map, cmap = cm.spectral, alpha = 1.0)
-  map_subplot.set_title('View')
-  plt.grid(False)
-  map_subplot.scatter(eye_x_index, eye_y_index, c = 'w')
-
-  ## Show view
-  figure = plt.figure(2, figsize = (12, 4))
-  plt.subplots_adjust(left = 0.04, right = 1.0)
-  view_subplot = figure.add_subplot(1, 1, 1)
-  plt.imshow(view, cmap = cm.spectral, alpha = 1.0, origin = 'lower')
-  plt.colorbar()
-  plt.grid(False)
-
-  # nonlocal hack - https://stackoverflow.com/questions/2609518/python-nested-function-scopes
-  scatterplot_colors = [['b', 'g', 'r', 'c', 'm', 'y']]
-  
-  def onclick(event):
-    try:
-      column_index = int(round(event.xdata))
-      row_index = int(round(event.ydata))
-      location = view_location[row_index][column_index]
-      (click_x_index, click_y_index) = renderer.elevation_tree.indiciesForLocation(location[0], location[1])
-    except:
-      return
-    
-    print(location)
-    color = scatterplot_colors[0][0]
-    relief_subplot.scatter(click_x_index, click_y_index, c = color)
-    heatmap_subplot.scatter(click_x_index, click_y_index, c = color)
-    map_subplot.scatter(click_x_index, click_y_index, c = color)
-    view_subplot.scatter(column_index, row_index, c = color)
-
-    # Rotate colors
-    scatterplot_colors[0] = scatterplot_colors[0][1:]
-    scatterplot_colors[0].append(color)
-    plt.show(block = True)
-
-  figure.canvas.mpl_connect('button_release_event', onclick)
-
-  plt.show(block = True)
