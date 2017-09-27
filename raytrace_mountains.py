@@ -75,13 +75,20 @@ def retriveSrtm(min_long, max_long, min_lat, max_lat):
   return data[int(start_row_index):int(end_row_index), int(start_col_index):int(end_col_index)]
 
 def retriveSingleSrtmSquare(location_string): # location_string is N37W122 for example
+  elevations = np.zeros((1201, 1201))
+
   filename = 'https://dds.cr.usgs.gov/srtm/version2_1/SRTM3/North_America/'
   filename += location_string + '.hgt.zip'
   filehandle, _ = urllib.urlretrieve(filename)
-  zip_file = zipfile.ZipFile(filehandle, 'r')
+  try:
+    zip_file = zipfile.ZipFile(filehandle, 'r')
+  except:
+   # This data source only contains North America so simply return zeros if what
+   # we want isn't on the server. Might be worth getting a new data source.
+   return elevations
+
   # Source: https://stevendkay.wordpress.com/2009/09/05/beginning-digital-elevation-model-work-with-python/
   one_dimensional_array = struct.unpack(">1442401H", zip_file.read(location_string + '.hgt'))
-  elevations = np.zeros((1201, 1201))
   for r in range(0, 1201):
     for c in range(0, 1201):
       value = one_dimensional_array[(1201 * r) + c]
