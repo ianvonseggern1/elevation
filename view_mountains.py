@@ -7,17 +7,15 @@ import matplotlib.patches as patches
 
 if __name__ == "__main__":
 
-  ##(min_long, max_long, min_lat, max_lat) = (122.0, 124.0, 37.0, 39.0)
-  ##elevations = retriveSrtm(min_long, max_long, min_lat, max_lat)
   #eye_location = Location(122.83, 37.67, 900.0) # A location a bit south of Mt Diablo
   #eye_location = Location(122.9142, 37.8817, 951) # The peak of Mt Diablo
-  #eye_location = Location(123.262209, 37.919241, 370) # The rotary peace grove lookout in tilden park
-  eye_location = Location(123.262209, 37.919241, 379) # Debugging only
+  eye_location = Location(123.262209, 37.919241, 370) # The rotary peace grove lookout in tilden park
   mode = 'load' # 'load', 'save', 'save-debugging'
 
   # Render the view and map data in numpy arrays
   renderer = RenderView(eye_location, debugging = mode == 'save-debugging')
 
+  # TODO clean up and simplify modes here
   if mode == 'save':
     (view, map, view_location) = renderer.save360View()
   elif mode == 'save-debugging':
