@@ -7,19 +7,16 @@ import matplotlib.patches as patches
 
 if __name__ == "__main__":
 
-  (min_long, max_long, min_lat, max_lat) = (122.0, 124.0, 37.0, 39.0)
-  elevations = retriveSrtm(min_long, max_long, min_lat, max_lat)
+  ##(min_long, max_long, min_lat, max_lat) = (122.0, 124.0, 37.0, 39.0)
+  ##elevations = retriveSrtm(min_long, max_long, min_lat, max_lat)
   #eye_location = Location(122.83, 37.67, 900.0) # A location a bit south of Mt Diablo
   #eye_location = Location(122.9142, 37.8817, 951) # The peak of Mt Diablo
   #eye_location = Location(123.262209, 37.919241, 370) # The rotary peace grove lookout in tilden park
-  eye_location = Location(123.262209, 37.919241, 371) # Debugging only
-  mode = 'save-debugging' # 'load', 'save', 'save-debugging'
+  eye_location = Location(123.262209, 37.919241, 379) # Debugging only
+  mode = 'load' # 'load', 'save', 'save-debugging'
 
   # Render the view and map data in numpy arrays
-  renderer = RenderView(np.copy(elevations), eye_location,
-                        min_long, max_long, min_lat, max_lat,
-                        approximate_earth_curvature = mode == 'save' # don't do this for debugging or loading
-                        )
+  renderer = RenderView(eye_location, debugging = mode == 'save-debugging')
 
   if mode == 'save':
     (view, map, view_location) = renderer.save360View()
@@ -28,7 +25,12 @@ if __name__ == "__main__":
   elif mode == 'load':
     (view, map, view_location) = renderer.loadView()
 
-  (eye_x_index, eye_y_index) = renderer.elevation_tree.indiciesForLocation(eye_location.long, eye_location.lat)
+  # If we load a presaved view we need to fetch the elevations, those aren't saved
+  if not renderer.elevations_instance:
+    renderer.loadElevationsInstance(approximate_earth_curvature = False)
+
+  (eye_x_index, eye_y_index) = renderer.elevations_instance.indiciesForLocation(eye_location.long, eye_location.lat)
+  elevations = renderer.elevations_instance.unaltered_elevations
 
   # Plot everything
   plt.ion()
@@ -72,7 +74,7 @@ if __name__ == "__main__":
       column_index = int(round(event.xdata))
       row_index = int(round(event.ydata))
       location = view_location[row_index][column_index]
-      (click_x_index, click_y_index) = renderer.elevation_tree.indiciesForLocation(location[0], location[1])
+      (click_x_index, click_y_index) = renderer.elevations_instance.indiciesForLocation(location[0], location[1])
     except:
       return
 

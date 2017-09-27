@@ -131,6 +131,7 @@ class Elevations(object):
     self.min_long = min_long
     self.min_lat = min_lat
     self.elevations = elevations
+    self.unaltered_elevations = np.copy(elevations)
     self.long_delta = (max_long - min_long) / elevations.shape[1]
     self.lat_delta = (max_lat - min_lat) / elevations.shape[0]
 
@@ -337,25 +338,35 @@ class Raytrace(object):
 
 class RenderView(object):
   MAX_DISTANCE = 100.0 # Since even on a super clear day its nearly impossible to see past 100 km
+  LONG_OFFSET = 1.0
+  LAT_OFFSET = 1.0
 
-  def __init__(self,
-               elevations, eye_location,
-               min_long, max_long, min_lat, max_lat,
-               approximate_earth_curvature = True):
+  def __init__(self, eye_location, debugging = False):
     self.eye_location = eye_location
-    eye_location_arg = eye_location if approximate_earth_curvature else None
-    self.elevation_tree = Elevations(elevations,
-                                     min_long, max_long, min_lat, max_lat,
-                                     eye_location_to_approximate_curvature_of_earth = eye_location_arg)
+    self.debugging = debugging
+    self.elevations_instance = None
+
+  def loadElevationsInstance(self, approximate_earth_curvature = True):
+    min_lat = self.eye_location.lat - self.LAT_OFFSET
+    max_lat = self.eye_location.lat + self.LAT_OFFSET
+    min_long = self.eye_location.long - self.LONG_OFFSET
+    max_long = self.eye_location.long + self.LONG_OFFSET
+    elevations = retriveSrtm(min_long, max_long, min_lat, max_lat)
+
+    eye_location_arg = None
+    if (approximate_earth_curvature and not self.debugging):
+        eye_location_arg = self.eye_location
+
+    self.elevations_instance = Elevations(elevations,
+                                          min_long, max_long, min_lat, max_lat,
+                                          eye_location_to_approximate_curvature_of_earth = eye_location_arg)
 
   # The function returns three 2d numpy arrays.
   #
   # The first, the view is what is seen from the location
   # of the 'eye' as the specificed angle with the specificed width and height.
   #
-  # The second is the map
-  # which is where each of these visible points are as seen from above. The points correspond to the
-  # smallest (first) grid in the elevation_tree.
+  # The second is the map which is where each of these visible points are as seen from above.
   #
   # The third, the view_locations, are the corresponding locations for each of the pixels in the view
   # they are stored as (average_longitude, average_latitude, height in meters)
@@ -368,9 +379,11 @@ class RenderView(object):
                     height_resolution = 1000,
                     print_progress = False):
 
+    self.loadElevationsInstance()
+
     view = np.zeros((height_resolution, width_resolution))
     view_locations = np.empty((height_resolution, width_resolution), dtype = object)
-    map = np.zeros(self.elevation_tree.elevations.shape)
+    map = np.zeros(self.elevations_instance.elevations.shape)
 
     horizontal_angle_delta = width_angle / width_resolution
     vertical_angle_delta = height_angle / height_resolution
@@ -396,7 +409,7 @@ class RenderView(object):
         verticle_angle = verticle_eye_angle - height_angle / 2.0 + row_index * vertical_angle_delta
         z_delta = math.sin(verticle_angle * math.pi / 180) * 1000.0
 
-        raytrace = Raytrace(self.eye_location, Location(long_delta, lat_delta, z_delta), self.elevation_tree)
+        raytrace = Raytrace(self.eye_location, Location(long_delta, lat_delta, z_delta), self.elevations_instance)
         box = raytrace.findFirstIntersectingBox(starting_box)
         if box is None:
           break
@@ -423,18 +436,24 @@ class RenderView(object):
   def pathForEye(self):
     return 'view_data/N' + str(self.eye_location.lat) + 'W' + str(self.eye_location.long) + '-height' + str(self.eye_location.z)
 
-  def save360View(self, width_resolution = 10000, height_resolution = 1000):
+  def save360View(self, width_resolution = 21000, height_resolution = 700):
     path = self.pathForEye()
-    try:
-      os.makedirs(path)
-    except:
-      print 'Failed to create directory for eye location, perhaps it already exists'
+
+    if os.path.exists(path):
+      print 'Data for this already exists. Load it instead'
       return None
 
     (view, map, view_locations) = self.getViewAndMap(0.0, width_angle = 360.0,
                                                      width_resolution = width_resolution,
                                                      height_resolution = height_resolution,
                                                      print_progress = True)
+
+    try:
+      os.makedirs(path)
+    except:
+      print 'Failed to create directory for eye location'
+      return (view, map, view_locations)
+
     file = open(path + '/view', 'wb')
     np.save(file, view)
     file.close()
@@ -461,3 +480,18 @@ class RenderView(object):
     view_locations = np.load(file)
     file.close()
     return (view, map, view_locations)
+
+  # If the view for this eye already exists just load it. Otherwise constuct and
+  # save it.
+  #
+  # Note the file path makes no note of low resolutions used for debugging so if
+  # you call and get a very low resolution view simply delete the data and call
+  # again with higher resolutions.
+  def loadOrConstructAndSaveView(self, width_resolution = 21000, height_resolution = 700):
+    path = self.pathForEye()
+    if os.path.exists(path):
+      print "Found existing view. Loading."
+      return self.loadView()
+    else:
+      print "Didn't find existing view. Going to compute view"
+      return self.save360View(width_resolution = width_resolution, height_resolution = height_resolution)
