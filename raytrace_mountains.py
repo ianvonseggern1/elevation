@@ -491,9 +491,14 @@ class RenderView(object):
     file = open(path + '/view')
     view = np.load(file)
     file.close()
-    file = open(path + '/map')
-    map = np.load(file)
-    file.close()
+
+    try:
+      file = open(path + '/map')
+      map = np.load(file)
+      file.close()
+    except:
+      map = None
+
     file = open(path + '/view_locations')
     view_locations = np.load(file)
     file.close()
