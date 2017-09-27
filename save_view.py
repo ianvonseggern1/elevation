@@ -14,7 +14,7 @@ import matplotlib.patches as patches
 if __name__ == "__main__":
 
   #eye_location = Location(122.9142, 37.8817, 951) # The peak of Mt Diablo
-  eye_location = Location(123.262209, 37.919241, 370) # The rotary peace grove lookout in tilden park
+  eye_location = Location(123.262209, 37.919241, 371) # The rotary peace grove lookout in tilden park
   mode = 'debugging' # 'run', 'debugging'
 
   # Render the view and map data in numpy arrays

@@ -13,7 +13,10 @@ if __name__ == "__main__":
   mode = 'load' # 'load', 'save', 'save-debugging'
 
   # Render the view and map data in numpy arrays
-  renderer = RenderView(eye_location, debugging = mode == 'save-debugging')
+  renderer = RenderView(eye_location,
+                        debugging = mode == 'save-debugging',
+                        store_unaltered_elevations = True,
+                        store_map = True)
 
   # TODO clean up and simplify modes here
   if mode == 'save':
@@ -28,7 +31,7 @@ if __name__ == "__main__":
     renderer.loadElevationsInstance(approximate_earth_curvature = False)
 
   (eye_x_index, eye_y_index) = renderer.elevations_instance.indiciesForLocation(eye_location.long, eye_location.lat)
-  elevations = renderer.elevations_instance.unaltered_elevations
+  elevations = renderer.elevations
 
   # Plot everything
   plt.ion()

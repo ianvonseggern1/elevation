@@ -138,7 +138,7 @@ class Elevations(object):
     self.min_long = min_long
     self.min_lat = min_lat
     self.elevations = elevations
-    self.unaltered_elevations = np.copy(elevations)
+    #self.unaltered_elevations = np.copy(elevations)
     self.long_delta = (max_long - min_long) / elevations.shape[1]
     self.lat_delta = (max_lat - min_lat) / elevations.shape[0]
 
@@ -348,10 +348,13 @@ class RenderView(object):
   LONG_OFFSET = 1.0
   LAT_OFFSET = 1.0
 
-  def __init__(self, eye_location, debugging = False):
+  def __init__(self, eye_location, debugging = False, store_unaltered_elevations = False, store_map = False):
     self.eye_location = eye_location
     self.debugging = debugging
+    self.store_unaltered_elevations = store_unaltered_elevations
+    self.store_map = store_map
     self.elevations_instance = None
+    self.elevations = None
 
   def loadElevationsInstance(self, approximate_earth_curvature = True):
     min_lat = self.eye_location.lat - self.LAT_OFFSET
@@ -359,6 +362,9 @@ class RenderView(object):
     min_long = self.eye_location.long - self.LONG_OFFSET
     max_long = self.eye_location.long + self.LONG_OFFSET
     elevations = retriveSrtm(min_long, max_long, min_lat, max_lat)
+
+    if self.store_unaltered_elevations:
+      self.elevations = elevations
 
     eye_location_arg = None
     if (approximate_earth_curvature and not self.debugging):
@@ -390,7 +396,9 @@ class RenderView(object):
 
     view = np.zeros((height_resolution, width_resolution))
     view_locations = np.empty((height_resolution, width_resolution), dtype = object)
-    map = np.zeros(self.elevations_instance.elevations.shape)
+    map = None
+    if self.store_map:
+      map = np.zeros(self.elevations_instance.elevations.shape)
 
     horizontal_angle_delta = width_angle / width_resolution
     vertical_angle_delta = height_angle / height_resolution
@@ -432,7 +440,8 @@ class RenderView(object):
 
         if not box.layer_index == 0:
           raise Exception(box.layer_index, "box.layer_index should be equal to 0 as we should have found the smallest interesecting box")
-        map[box.y_index][box.x_index] = distance_km
+        if map is not None:
+          map[box.y_index][box.x_index] = distance_km
 
         starting_box = box
 
@@ -443,6 +452,7 @@ class RenderView(object):
   def pathForEye(self):
     return 'view_data/N' + str(self.eye_location.lat) + 'W' + str(self.eye_location.long) + '-height' + str(self.eye_location.z)
 
+  # TODO move to pytables to avoid OOM errors
   def save360View(self, width_resolution = 21000, height_resolution = 700):
     path = self.pathForEye()
 
@@ -465,9 +475,10 @@ class RenderView(object):
     np.save(file, view)
     file.close()
 
-    file = open(path + '/map', 'wb')
-    np.save(file, map)
-    file.close()
+    if map is not None:
+      file = open(path + '/map', 'wb')
+      np.save(file, map)
+      file.close()
 
     file = open(path + '/view_locations', 'wb')
     np.save(file, view_locations)
